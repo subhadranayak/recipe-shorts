@@ -35,7 +35,7 @@ jobs:
           - os: macos-latest
             label: macOS Apple Silicon
             artifact: RecipeShorts-macOS-AppleSilicon
-          - os: macos-13
+          - os: macos-15-intel
             label: macOS Intel
             artifact: RecipeShorts-macOS-Intel
     steps:
