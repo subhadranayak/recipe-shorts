@@ -1,4 +1,27 @@
-# Recipe Shorts — free website (Render)
+# Recipe Shorts
+
+Turn a long recipe video into a vertical Short (finished dish → prep → cooking → final dish → taste → “full recipe on my channel”).
+
+## Desktop app (Windows and Mac)
+
+If you want to run it on a computer, download the app for your system from the [v1.0 release](https://github.com/subhadranayak/recipe-shorts/releases/tag/v1.0):
+
+- **Windows:** [RecipeShorts-Windows.zip](https://github.com/subhadranayak/recipe-shorts/releases/download/v1.0/RecipeShorts-Windows.zip) — unzip, then double-click `RecipeShorts.exe`.
+- **Mac (Apple Silicon — M1, M2, M3, M4):** [RecipeShorts-macOS-AppleSilicon.zip](https://github.com/subhadranayak/recipe-shorts/releases/download/v1.0/RecipeShorts-macOS-AppleSilicon.zip)
+- **Mac (Intel):** [RecipeShorts-macOS-Intel.zip](https://github.com/subhadranayak/recipe-shorts/releases/download/v1.0/RecipeShorts-macOS-Intel.zip)
+
+The first time, the computer may warn you because the app is not signed:
+
+- **Windows:** if you see “Windows protected your PC”, click **More info**, then **Run anyway**.
+- **Mac:** do not double-click the first time. **Right-click** the app, click **Open**, then **Open** again. If it is still blocked, go to **System Settings → Privacy & Security** and click **Open Anyway**.
+
+Your browser will open the tool. Use the original cooking video (not a YouTube download). Shorts are made at **1080×1920** when the video is 1080p or higher.
+
+The website at [recipe-shorts.onrender.com](https://recipe-shorts.onrender.com) still works on an iPad. It uses a small free computer, so it is slower and defaults to 720p.
+
+---
+
+# Website (Render, for iPad)
 
 This folder is a ready-to-upload website: it turns a long recipe video into a vertical Short
 (finished dish → prep → cooking → final dish → taste → “full recipe on my channel”).

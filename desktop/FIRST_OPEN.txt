@@ -1,0 +1,35 @@
+Recipe Shorts — first time you open the app
+===========================================
+
+The app is not signed with a paid Apple / Microsoft certificate, so the
+first time your computer may warn you. That is expected. The app only
+runs on your computer and does not send your videos anywhere.
+
+WINDOWS
+-------
+1. Unzip RecipeShorts-Windows.zip (right-click → Extract All).
+2. Open the RecipeShorts folder and double-click RecipeShorts.exe.
+3. If you see “Windows protected your PC”:
+     click “More info”, then click “Run anyway”.
+4. Your browser should open the tool. Keep the small Recipe Shorts
+   window open while it works. Click Quit when you are finished.
+
+MAC
+---
+1. Unzip the file (double-click the .zip).
+2. You will see “Recipe Shorts”.
+3. Do not double-click it the first time. Instead, right-click
+   (or Control-click) the app, then click Open, then click Open again.
+4. If macOS still blocks it: open System Settings → Privacy & Security,
+   scroll down, and click “Open Anyway”.
+5. Your browser should open the tool. Keep the small Recipe Shorts
+   window open while it works. Click Quit when you are finished.
+
+Apple Silicon (M1, M2, M3, M4) Macs should use the Apple Silicon download.
+Older Intel Macs should use the Intel download.
+
+USING THE TOOL
+--------------
+Upload the original cooking video (not a copy downloaded from YouTube),
+type the title, and click Make Short. If the video is 1080p or higher,
+the Short is made at 1080×1920.

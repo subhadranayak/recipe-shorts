@@ -1,0 +1,5 @@
+# Runtime + packager for the desktop app. Do not install faster-whisper (keeps the app small).
+pyinstaller>=6.3,<7
+numpy>=2,<3
+opencv-python-headless>=4.8,<5
+gradio==6.31.0

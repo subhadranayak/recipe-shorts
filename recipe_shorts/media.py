@@ -1,10 +1,68 @@
 """Small ffmpeg/ffprobe helpers."""
 import json
+import os
 import shutil
 import subprocess
+import sys
+
+
+def _bin_candidates():
+    found = []
+    env = os.environ.get("RECIPE_SHORTS_BIN")
+    if env:
+        found.append(env)
+    if getattr(sys, "frozen", False):
+        exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+        found.extend([
+            exe_dir,
+            os.path.join(exe_dir, "bin"),
+            os.path.join(exe_dir, "_internal"),
+            os.path.join(exe_dir, "_internal", "bin"),
+        ])
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            found.extend([meipass, os.path.join(meipass, "bin")])
+        if sys.platform == "darwin":
+            contents = os.path.dirname(exe_dir)
+            found.extend([
+                os.path.join(contents, "Resources"),
+                os.path.join(contents, "Resources", "bin"),
+                os.path.join(contents, "Frameworks"),
+                os.path.join(contents, "Frameworks", "bin"),
+                os.path.join(contents, "Frameworks", "_internal"),
+            ])
+    # Running the desktop launcher from source: desktop/bin
+    here = os.path.dirname(os.path.abspath(__file__))
+    found.append(os.path.join(os.path.dirname(here), "desktop", "bin"))
+    return found
+
+
+def _tool_in(directory, name):
+    if not directory:
+        return None
+    for cand in (name, name + ".exe"):
+        p = os.path.join(directory, cand)
+        if os.path.isfile(p):
+            return p
+    return None
+
+
+def ensure_ffmpeg_on_path():
+    """If bundled ffmpeg/ffprobe exist, put their folder first on PATH.
+
+    No-op when the tools are already on PATH and we are not a frozen app
+    (this is the Render / Docker case).
+    """
+    if shutil.which("ffmpeg") and shutil.which("ffprobe") and not getattr(sys, "frozen", False):
+        return
+    for d in _bin_candidates():
+        if _tool_in(d, "ffmpeg") and _tool_in(d, "ffprobe"):
+            os.environ["PATH"] = os.path.abspath(d) + os.pathsep + os.environ.get("PATH", "")
+            return
 
 
 def require_ffmpeg():
+    ensure_ffmpeg_on_path()
     for tool in ("ffmpeg", "ffprobe"):
         if not shutil.which(tool):
             raise SystemExit(f"'{tool}' was not found on PATH. Install ffmpeg first (see README).")

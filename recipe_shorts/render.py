@@ -4,11 +4,22 @@ wider than 9:16 we still crop full-bleed on the vessel centre), concat, burn hoo
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 
 from .captions import write_ass
 
-FONT_DIR = os.path.join(os.path.dirname(__file__), "fonts")
+
+def _package_dir():
+    # PyInstaller onedir puts package data under sys._MEIPASS.
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        bundled = os.path.join(sys._MEIPASS, "recipe_shorts")
+        if os.path.isdir(os.path.join(bundled, "fonts")):
+            return bundled
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+FONT_DIR = os.path.join(_package_dir(), "fonts")
 
 
 def _video_chain(k, seg, out_w, out_h, fps, layout=None, tm=""):
