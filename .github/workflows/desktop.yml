@@ -1,0 +1,252 @@
+# Build unsigned Windows and macOS desktop apps, smoke-test them, and
+# attach zipped artifacts to the v1.0 GitHub Release.
+name: Build desktop apps
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, desktop-apps]
+    tags: ["v*"]
+    paths:
+      - "desktop/**"
+      - "recipe_shorts/**"
+      - ".github/workflows/desktop.yml"
+      - "README.md"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: Windows
+            artifact: RecipeShorts-Windows
+          - os: macos-latest
+            label: macOS Apple Silicon
+            artifact: RecipeShorts-macOS-AppleSilicon
+          - os: macos-13
+            label: macOS Intel
+            artifact: RecipeShorts-macOS-Intel
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install packager and app dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r desktop/requirements-build.txt
+
+      - name: Download static ffmpeg and ffprobe
+        run: python desktop/fetch_ffmpeg.py --dest desktop/bin
+
+      - name: Build app with PyInstaller
+        run: python -m PyInstaller --noconfirm --clean desktop/RecipeShorts.spec
+
+      - name: Locate build and copy ffmpeg next to the executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::group::dist tree"
+          find dist -maxdepth 5 -type f | head -80
+          echo "::endgroup::"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            APPDIR="dist/RecipeShorts"
+            EXE="$APPDIR/RecipeShorts.exe"
+            test -f "$EXE"
+            cp -f desktop/bin/ffmpeg.exe desktop/bin/ffprobe.exe "$APPDIR/"
+            # Also into _internal in case PATH looks there first.
+            if [ -d "$APPDIR/_internal" ]; then
+              cp -f desktop/bin/ffmpeg.exe desktop/bin/ffprobe.exe "$APPDIR/_internal/"
+            fi
+            echo "EXE=$EXE" >> "$GITHUB_ENV"
+            echo "APPDIR=$APPDIR" >> "$GITHUB_ENV"
+          else
+            APP="dist/Recipe Shorts.app"
+            test -d "$APP"
+            BIN=""
+            for c in \
+              "$APP/Contents/MacOS/RecipeShorts" \
+              "$APP/Contents/MacOS/Recipe Shorts"; do
+              if [ -x "$c" ]; then BIN="$c"; break; fi
+            done
+            if [ -z "$BIN" ]; then
+              BIN="$(find "$APP/Contents/MacOS" -type f -perm +111 | head -1)"
+            fi
+            test -n "$BIN" && test -x "$BIN"
+            MACOS="$(dirname "$BIN")"
+            cp -f desktop/bin/ffmpeg desktop/bin/ffprobe "$MACOS/"
+            chmod +x "$MACOS/ffmpeg" "$MACOS/ffprobe"
+            # Ad-hoc sign so first-open is slightly smoother (still unsigned by Apple).
+            codesign --force --deep --sign - "$APP" || true
+            echo "EXE=$BIN" >> "$GITHUB_ENV"
+            echo "APPDIR=$APP" >> "$GITHUB_ENV"
+          fi
+          echo "Using executable: ${EXE:-$BIN}"
+
+      - name: Smoke test — launch UI and render a test Short
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p smoke
+          export RECIPE_SHORTS_PORT_FILE="$PWD/smoke/port.txt"
+          export RECIPE_SHORTS_SMOKE_LOG="$PWD/smoke/smoke-result.txt"
+          export RECIPE_SHORTS_ERROR_LOG="$PWD/smoke/error.txt"
+          export GRADIO_ANALYTICS_ENABLED=False
+
+          # 45s 1080p test clip (pipeline auto-mode requires >= 40s; --smoke works anyway)
+          FFMPEG_BIN="desktop/bin/ffmpeg"
+          if [ "${{ runner.os }}" = "Windows" ]; then FFMPEG_BIN="desktop/bin/ffmpeg.exe"; fi
+          "$FFMPEG_BIN" -hide_banner -y \
+            -f lavfi -i testsrc2=size=1920x1080:rate=30 \
+            -f lavfi -i sine=frequency=440:sample_rate=48000 \
+            -t 45 -c:v libx264 -pix_fmt yuv420p -preset veryfast -crf 22 \
+            -c:a aac -shortest smoke/input.mp4
+
+          echo "Starting app --serve"
+          "${EXE}" --serve --port 8765 &
+          SERVE_PID=$!
+          cleanup() { kill "$SERVE_PID" 2>/dev/null || true; }
+          trap cleanup EXIT
+
+          ok=0
+          for i in $(seq 1 90); do
+            if curl -fsS -o /dev/null -w "%{http_code}" http://127.0.0.1:8765/ | grep -qE '^[23]'; then
+              echo "UI is up (attempt $i)"
+              ok=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ok" != 1 ]; then
+            echo "UI did not become ready"
+            ls -la smoke || true
+            cat smoke/error.txt || true
+            cat smoke/port.txt || true
+            exit 1
+          fi
+          code=$(curl -sS -o /tmp/ui.html -w "%{http_code}" http://127.0.0.1:8765/)
+          echo "GET / -> $code"
+          test "$code" = "200"
+
+          echo "Running bundled --smoke"
+          "${EXE}" --smoke "$PWD/smoke/input.mp4" "$PWD/smoke/out.mp4"
+          if [ ! -f "$RECIPE_SHORTS_SMOKE_LOG" ]; then
+            # Windowed Windows builds may not flush stdio; still require the output video.
+            if [ -f smoke/out.mp4 ]; then
+              echo "PASS (output exists, log missing)" > "$RECIPE_SHORTS_SMOKE_LOG"
+            else
+              echo "smoke log and output missing"
+              cat smoke/error.txt || true
+              exit 1
+            fi
+          fi
+          cat "$RECIPE_SHORTS_SMOKE_LOG"
+          grep -q "PASS" "$RECIPE_SHORTS_SMOKE_LOG"
+          test -s smoke/out.mp4
+          desktop/bin/ffprobe -v error -show_entries stream=width,height,codec_type -of csv=p=0 smoke/out.mp4
+          echo "SMOKE_OK=1" >> "$GITHUB_ENV"
+          cleanup
+          trap - EXIT
+
+      - name: Package zip
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p package
+          cp desktop/FIRST_OPEN.txt package/
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp -R dist/RecipeShorts package/RecipeShorts
+          else
+            cp -R "dist/Recipe Shorts.app" "package/Recipe Shorts.app"
+          fi
+          cd package
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            7z a -tzip "../${{ matrix.artifact }}.zip" .
+          else
+            zip -r -y "../${{ matrix.artifact }}.zip" .
+          fi
+          cd ..
+          ls -lh "${{ matrix.artifact }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Attach zips to GitHub Release v1.0
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/desktop-apps' || startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Collect zips and publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          find artifacts -name '*.zip' -exec cp -v {} dist/ \;
+          ls -lh dist
+          python3 - << 'PY'
+          from pathlib import Path
+          lines = [
+              "Recipe Shorts 1.0 — desktop apps for Windows and Mac.",
+              "",
+              "Download the zip for your computer, unzip it, and open the app. Your browser will show the tool. No Terminal or Python install is needed. Shorts are made at 1080×1920 when your video is 1080p or higher.",
+              "",
+              "## Downloads",
+          ]
+          names = {
+              "RecipeShorts-Windows.zip": "Windows",
+              "RecipeShorts-macOS-AppleSilicon.zip": "Mac (Apple Silicon — M1, M2, M3, M4)",
+              "RecipeShorts-macOS-Intel.zip": "Mac (Intel)",
+          }
+          for fn, label in names.items():
+              p = Path("dist") / fn
+              if p.exists():
+                  mb = p.stat().st_size / (1024 * 1024)
+                  url = f"https://github.com/subhadranayak/recipe-shorts/releases/download/v1.0/{fn}"
+                  lines.append(f"- **{label}:** [{fn}]({url}) ({mb:.0f} MB)")
+          lines += [
+              "",
+              "## First time you open it",
+              "",
+              "The app is not signed, so the first time your computer may warn you. That is expected.",
+              "",
+              "- **Windows:** if you see “Windows protected your PC”, click **More info**, then **Run anyway**.",
+              "- **Mac:** do not double-click the first time. **Right-click** (or Control-click) the app, click **Open**, then **Open** again. If it is still blocked, go to **System Settings → Privacy & Security** and click **Open Anyway**.",
+              "",
+              "Use the original cooking video, not a copy downloaded from YouTube. Keep the small Recipe Shorts window open until the Short is ready, then click Quit.",
+              "",
+              "The iPad website is still at https://recipe-shorts.onrender.com (slower, 720p by default).",
+          ]
+          Path("release-notes.md").write_text("\n".join(lines) + "\n")
+          print(Path("release-notes.md").read_text())
+          PY
+          if gh release view v1.0 >/dev/null 2>&1; then
+            gh release upload v1.0 dist/*.zip --clobber
+            gh release edit v1.0 --title "Recipe Shorts 1.0" --notes-file release-notes.md
+          else
+            gh release create v1.0 dist/*.zip --title "Recipe Shorts 1.0" --notes-file release-notes.md
+          fi
+          gh release view v1.0
