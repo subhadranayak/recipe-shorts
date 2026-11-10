@@ -1,0 +1,17 @@
+# Render Blueprint: New > Blueprint, point at a repo whose root is this folder.
+# Choose the Free compute plan in the dashboard if the blueprint does not set it.
+services:
+  - type: web
+    name: recipe-shorts
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DEFAULT_RESOLUTION
+        value: "720"
+      - key: LIGHT_MODE
+        value: "1"
+      - key: FFMPEG_THREADS
+        value: "1"
+      - key: PYTHONUNBUFFERED
+        value: "1"
