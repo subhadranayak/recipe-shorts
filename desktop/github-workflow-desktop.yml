@@ -59,7 +59,11 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::dist tree"
-          find dist -maxdepth 5 -type f | head -80
+          # Do not pipe find into head under pipefail: SIGPIPE exits 141 (Windows)
+          # and "find: stdout: Undefined error: 0" on macOS.
+          ls -la dist || true
+          ls -la dist/RecipeShorts 2>/dev/null || true
+          ls -la "dist/Recipe Shorts.app/Contents/MacOS" 2>/dev/null || true
           echo "::endgroup::"
           if [ "${{ runner.os }}" = "Windows" ]; then
             APPDIR="dist/RecipeShorts"
@@ -82,7 +86,7 @@ jobs:
               if [ -x "$c" ]; then BIN="$c"; break; fi
             done
             if [ -z "$BIN" ]; then
-              BIN="$(find "$APP/Contents/MacOS" -type f -perm +111 | head -1)"
+              BIN="$(find "$APP/Contents/MacOS" -maxdepth 1 -type f ! -name 'ffmpeg' ! -name 'ffprobe' | head -n 1 || true)"
             fi
             test -n "$BIN" && test -x "$BIN"
             MACOS="$(dirname "$BIN")"
