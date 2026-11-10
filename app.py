@@ -138,5 +138,5 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))
     host = os.environ.get("HOST") or os.environ.get("GRADIO_SERVER_NAME") or "127.0.0.1"
     demo.queue(default_concurrency_limit=1).launch(
-        server_name=host, server_port=port, css=CSS, max_file_size="500mb", show_api=False,
+        server_name=host, server_port=port, css=CSS, max_file_size="500mb",
     )
