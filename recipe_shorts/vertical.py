@@ -2,7 +2,6 @@
 to the food-colour centroid) and the action (motion), and place ONE static crop per shot
 centred between them. Also scores how well a shot works vertically, so bad shots can be skipped.
 """
-import subprocess
 
 import cv2
 import numpy as np
@@ -17,9 +16,10 @@ def grab_frames(src, start, end, n=4):
     frames = []
     for k in range(n):
         t = start + (end - start) * (k + 0.5) / n
-        raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-ss", f"{t:.2f}", "-i", str(src),
-                              "-frames:v", "1", "-vf", f"scale={AW}:{AH}" + (f",{tm}" if tm else ""), "-f", "rawvideo",
-                              "-pix_fmt", "bgr24", "-"], capture_output=True).stdout
+        from .media import run_cmd
+        raw = run_cmd(["ffmpeg", "-loglevel", "error", "-ss", f"{t:.2f}", "-i", str(src),
+                       "-frames:v", "1", "-vf", f"scale={AW}:{AH}" + (f",{tm}" if tm else ""), "-f", "rawvideo",
+                       "-pix_fmt", "bgr24", "-"]).stdout
         if len(raw) == AW * AH * 3:
             frames.append(np.frombuffer(raw, np.uint8).reshape(AH, AW, 3))
     return frames

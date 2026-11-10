@@ -5,16 +5,19 @@ PyAV's container handling. Default: language="en", which makes Whisper write
 English captions even when the speaker talks Hindi/Hinglish (it effectively
 translates). Use language="hi" for Hindi (Devanagari) output, or None for auto.
 """
-import subprocess
 
 import numpy as np
 
 
 def load_audio(path):
-    raw = subprocess.run(
+    from .media import run_cmd
+    r = run_cmd(
         ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(path), "-vn",
          "-ac", "1", "-ar", "16000", "-f", "f32le", "-"],
-        capture_output=True, check=True).stdout
+    )
+    if r.returncode != 0:
+        raise RuntimeError((r.stderr or b"")[-500:] if isinstance(r.stderr, (bytes, bytearray)) else (r.stderr or "ffmpeg failed"))
+    raw = r.stdout
     return np.frombuffer(raw, np.float32)
 
 

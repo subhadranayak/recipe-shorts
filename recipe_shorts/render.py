@@ -3,7 +3,6 @@ one (static crop, or fit-to-width over a blurred background when the vessel is
 wider than 9:16 we still crop full-bleed on the vessel centre), concat, burn hook + captions (ASS), encode H.264/AAC mp4."""
 import os
 import shutil
-import subprocess
 import tempfile
 
 from .captions import write_ass
@@ -51,8 +50,9 @@ def render_clip(src, clip, out_path, out_w, out_h, has_audio, layout="crop", hoo
             cmd += ["-map", "[ac]", "-c:a", "aac", "-b:a", "128k"]
         cmd += ["-c:v", "libx264", "-preset", preset, "-crf", str(crf), "-pix_fmt", "yuv420p",
                 "-movflags", "+faststart", os.path.abspath(out_path)]
-        r = subprocess.run(cmd, cwd=work, capture_output=True, text=True)
+        from .media import run_cmd
+        r = run_cmd(cmd, cwd=work, text=True)
         if r.returncode != 0:
-            raise RuntimeError(f"ffmpeg failed for {out_path}:\n{r.stderr[-2000:]}")
+            raise RuntimeError(f"ffmpeg failed for {out_path}:\n{(r.stderr or '')[-2000:]}")
     finally:
         shutil.rmtree(work, ignore_errors=True)

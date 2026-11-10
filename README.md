@@ -16,7 +16,9 @@ Official pages: [Pricing](https://render.com/pricing) · [Free limits](https://r
 - **Downloads:** 5 GB of outgoing traffic a month on the Hobby plan. Stay under that. If you go over and have not added a card, Render pauses the site until next month.
 - **Time limit:** a single request can run up to 100 minutes, which is enough to upload a 1–5 minute (or longer) video and wait for the Short. Keep the tab open.
 - **Storage:** uploaded files are temporary. They are deleted after a couple of hours, and also whenever the site sleeps or restarts.
-- **Speed:** a 6-minute recipe may take several minutes, sometimes closer to 10, because the free computer is small.
+- **Speed:** a 6-minute recipe may take several minutes, sometimes closer to 10–15, because the free computer is small. Big or 4K uploads are first copied to a smaller 720p working file so they can actually finish.
+- **Video length:** up to 15 minutes. Longer clips are rejected with a clear message.
+- **One at a time:** only one Short runs at a time, and at most one person can wait behind it. Anyone else sees that the server is busy and should try again in a few minutes. Closing the tab cancels the job. A job that is still running after 20 minutes is stopped automatically, so the next visit always starts fresh.
 
 ## What you need to do (no terminal)
 

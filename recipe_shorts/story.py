@@ -13,7 +13,6 @@ Shots can be picked automatically (auto_story) or hand-picked in a shots.json.
 import json
 import os
 import shutil
-import subprocess
 import tempfile
 
 import numpy as np
@@ -116,7 +115,8 @@ def render_story(src, shots, hook, out_path, src_w, src_h, out_w=None, out_h=Non
         t += END_SECS
 
     def _ff(cmd, cwd=None):
-        r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+        from .media import run_cmd
+        r = run_cmd(cmd, cwd=cwd, text=True)
         if r.returncode:
             raise RuntimeError((r.stderr or r.stdout or "ffmpeg failed")[-2000:])
 

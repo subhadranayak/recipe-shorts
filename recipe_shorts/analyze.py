@@ -24,22 +24,23 @@ def _frames(path, fps):
     """Yield (t, bgr_frame) at `fps` samples per second, letterbox-free 320x180."""
     from .media import sdr_for
     tm = sdr_for(str(path))
+    from .media import check_deadline, close_popen, popen_cmd
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(path),
            "-vf", f"fps={fps},scale={SAMPLE_W}:{SAMPLE_H}" + (f",{tm}" if tm else ""),
            "-f", "rawvideo", "-pix_fmt", "bgr24", "-"]
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    p = popen_cmd(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     size = SAMPLE_W * SAMPLE_H * 3
     i = 0
     try:
         while True:
+            check_deadline()
             buf = p.stdout.read(size)
             if len(buf) < size:
                 break
             yield i / fps, np.frombuffer(buf, np.uint8).reshape(SAMPLE_H, SAMPLE_W, 3)
             i += 1
     finally:
-        p.stdout.close()
-        p.wait()
+        close_popen(p)
 
 
 def analyze_video(path, fps=2.0, log=print):
