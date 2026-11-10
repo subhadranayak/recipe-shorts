@@ -34,3 +34,21 @@ On macOS it produces `dist/Recipe Shorts.app`.
 
 The GitHub Actions workflow `.github/workflows/desktop.yml` builds both
 OSes, runs those checks, and attaches the zips to the `v1.0` release.
+
+## Enabling the GitHub Actions build
+
+The packager workflow lives at `desktop/github-workflow-desktop.yml`.
+Pushing a file into `.github/workflows/` needs a GitHub token with the
+`workflow` scope (the `repo` scope alone is not enough). Once that token
+is available:
+
+```bash
+mkdir -p .github/workflows
+cp desktop/github-workflow-desktop.yml .github/workflows/desktop.yml
+git add .github/workflows/desktop.yml
+git commit -m "Add desktop app GitHub Actions workflow"
+git push
+```
+
+The workflow builds Windows, Apple Silicon, and Intel Mac apps, smoke-tests
+each one, and attaches the zips to the [v1.0 release](https://github.com/subhadranayak/recipe-shorts/releases/tag/v1.0).
